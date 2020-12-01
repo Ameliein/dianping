@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sun.misc.BASE64Encoder;
 
+import javax.jws.soap.SOAPBinding;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -41,6 +42,15 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(EmBusinessError.REGISTER_DUP_FAIL);
         }
         return getUser(registerUser.getId());
+    }
+
+    @Override
+    public UserModel login(String telphone, String password) throws UnsupportedEncodingException, NoSuchAlgorithmException, BusinessException {
+        UserModel userModel =  userModelMapper.selectByTelphoneAndPassword(telphone,encodeByMd5(password));
+        if (userModel == null) {
+            throw new BusinessException(EmBusinessError.LOGIN_FAIL);
+        }
+        return userModel;
     }
 
 

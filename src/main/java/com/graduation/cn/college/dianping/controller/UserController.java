@@ -2,6 +2,7 @@ package com.graduation.cn.college.dianping.controller;
 
 import com.graduation.cn.college.dianping.common.*;
 import com.graduation.cn.college.dianping.model.UserModel;
+import com.graduation.cn.college.dianping.request.LoginReq;
 import com.graduation.cn.college.dianping.request.RegisterReq;
 import com.graduation.cn.college.dianping.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
@@ -20,6 +22,11 @@ import java.security.NoSuchAlgorithmException;
 @Controller("/user")
 @RequestMapping("/user")
 public class UserController {
+
+    public static final String CURRENT_USER_SESSION = "currentUserSession";
+
+    @Autowired
+    private HttpServletRequest httpServletRequest;
 
     @Autowired
     private UserService userService;
@@ -66,4 +73,29 @@ public class UserController {
         return CommonRes.create(resUserModel);
     }
 
+    @RequestMapping("/login")
+    @ResponseBody
+    public CommonRes login(@RequestBody @Valid LoginReq loginReq, BindingResult bindingResult) throws BusinessException, UnsupportedEncodingException, NoSuchAlgorithmException {
+        if (bindingResult.hasErrors()) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,CommonUtil.processErrorString(bindingResult));
+        }
+        UserModel userModel = userService.login(loginReq.getTelphone(),loginReq.getPassword());
+        httpServletRequest.getSession().setAttribute(CURRENT_USER_SESSION,userModel);
+
+        return CommonRes.create(userModel);
+    }
+
+    @RequestMapping("/logout")
+    @ResponseBody
+    public CommonRes logout() {
+        httpServletRequest.getSession().invalidate();
+        return CommonRes.create(null);
+    }
+
+    @RequestMapping("/getCurrentUser")
+    @ResponseBody
+    public CommonRes getCurrentUser() {
+        UserModel userModel = (UserModel) httpServletRequest.getSession().getAttribute(CURRENT_USER_SESSION);
+        return CommonRes.create(userModel);
+    }
 }
