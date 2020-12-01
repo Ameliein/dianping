@@ -12,7 +12,7 @@ public class CommonRes {
 
     public static CommonRes create(Object result, String status) {
         CommonRes commonRes = new CommonRes();
-        commonRes.setData(status);
+        commonRes.setStatus(status);
         commonRes.setData(result);
         return commonRes;
     }

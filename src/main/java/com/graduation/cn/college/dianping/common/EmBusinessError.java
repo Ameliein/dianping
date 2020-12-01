@@ -7,10 +7,10 @@ public enum EmBusinessError {
     UNKNOWN_ERROR(10002,"unknown error"),
     NO_HANDLER_FOUND(10003,"can't find the excurtive loaction operation"),
     BIND_EXCEPTION_ERROR(10004,"request parameter error"),
-    PARAMETER_VALIDATION_ERROR(10005,"请求参数校验失败"),
+    PARAMETER_VALIDATION_ERROR(10005,"Parameter validation error"),
 
     //用户服务相关的错误类型20000开头
-    REGISTER_DUP_FAIL(20001,"用户已存在"),
+    REGISTER_DUP_FAIL(20001,"user had already exist!"),
 
     LOGIN_FAIL(20002,"手机号或密码错误");
 
