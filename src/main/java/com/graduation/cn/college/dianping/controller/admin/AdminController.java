@@ -3,6 +3,7 @@ package com.graduation.cn.college.dianping.controller.admin;
 import com.graduation.cn.college.dianping.common.AdminPermission;
 import com.graduation.cn.college.dianping.common.BusinessException;
 import com.graduation.cn.college.dianping.common.EmBusinessError;
+import com.graduation.cn.college.dianping.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -27,6 +28,9 @@ public class AdminController {
     @Value("${admin.encryptPassword}")
     private String password;
 
+    @Autowired
+    private UserService userService;
+
     public static final String CURRET_ANDMIN_SESSION = "currentAdminSession";
 
     @Autowired
@@ -36,6 +40,9 @@ public class AdminController {
     @AdminPermission
     public ModelAndView index() {
         ModelAndView modelAndView = new ModelAndView("/admin/admin/index");
+        modelAndView.addObject("userCount",userService.countAllUser());
+        modelAndView.addObject("CONTROLLER_NAME","admin");
+        modelAndView.addObject("ACTION_NAME","index");
         return modelAndView;
     }
 
