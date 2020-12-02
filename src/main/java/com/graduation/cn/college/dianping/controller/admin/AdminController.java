@@ -1,5 +1,6 @@
 package com.graduation.cn.college.dianping.controller.admin;
 
+import com.graduation.cn.college.dianping.common.AdminPermission;
 import com.graduation.cn.college.dianping.common.BusinessException;
 import com.graduation.cn.college.dianping.common.EmBusinessError;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,7 @@ public class AdminController {
     private HttpServletRequest httpServletRequest;
 
     @RequestMapping("/index")
+    @AdminPermission
     public ModelAndView index() {
         ModelAndView modelAndView = new ModelAndView("/admin/admin/index");
         return modelAndView;
