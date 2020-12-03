@@ -1,6 +1,8 @@
 package com.graduation.cn.college.dianping.service.impl;
 
 import com.graduation.cn.college.dianping.common.AdminPermission;
+import com.graduation.cn.college.dianping.common.BusinessException;
+import com.graduation.cn.college.dianping.common.EmBusinessError;
 import com.graduation.cn.college.dianping.dal.SellerModelMapper;
 import com.graduation.cn.college.dianping.model.SellerModel;
 import com.graduation.cn.college.dianping.service.SellerService;
@@ -40,7 +42,13 @@ public class SellerServiceImpl implements SellerService {
     }
 
     @Override
-    public SellerModel changeStatus(Integer id, Integer disabledFlag) {
-        return null;
+    public SellerModel changeStatus(Integer id, Integer disabledFlag) throws BusinessException {
+        SellerModel sellerModel = get(id);
+        if (sellerModel == null) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        }
+        sellerModel.setDisabledFlag(disabledFlag);
+        sellerModelMapper.updateByPrimaryKeySelective(sellerModel);
+        return sellerModel;
     }
 }

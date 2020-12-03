@@ -2,10 +2,7 @@ package com.graduation.cn.college.dianping.controller;
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.graduation.cn.college.dianping.common.AdminPermission;
-import com.graduation.cn.college.dianping.common.BusinessException;
-import com.graduation.cn.college.dianping.common.CommonUtil;
-import com.graduation.cn.college.dianping.common.EmBusinessError;
+import com.graduation.cn.college.dianping.common.*;
 import com.graduation.cn.college.dianping.model.SellerModel;
 import com.graduation.cn.college.dianping.request.PageQuery;
 import com.graduation.cn.college.dianping.request.SellerCreateReq;
@@ -15,6 +12,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.validation.Valid;
@@ -59,5 +58,21 @@ public class SellerController {
         sellerService.create(sellerModel);
 
         return "redirect:/admin/seller/index";
+    }
+
+    @RequestMapping(value = "down", method = RequestMethod.POST)
+    @AdminPermission
+    @ResponseBody
+    public CommonRes down(@RequestParam(value = "id")Integer id) throws BusinessException {
+        SellerModel sellerModel = sellerService.changeStatus(id, 1);
+        return CommonRes.create(sellerModel);
+    }
+
+    @RequestMapping(value = "up", method = RequestMethod.POST)
+    @AdminPermission
+    @ResponseBody
+    public CommonRes up(@RequestParam(value = "id")Integer id) throws BusinessException {
+        SellerModel sellerModel = sellerService.changeStatus(id, 0);
+        return CommonRes.create(sellerModel);
     }
 }
