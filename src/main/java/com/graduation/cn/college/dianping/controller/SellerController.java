@@ -1,10 +1,13 @@
 package com.graduation.cn.college.dianping.controller;
 
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.graduation.cn.college.dianping.common.AdminPermission;
 import com.graduation.cn.college.dianping.common.BusinessException;
 import com.graduation.cn.college.dianping.common.CommonUtil;
 import com.graduation.cn.college.dianping.common.EmBusinessError;
 import com.graduation.cn.college.dianping.model.SellerModel;
+import com.graduation.cn.college.dianping.request.PageQuery;
 import com.graduation.cn.college.dianping.request.SellerCreateReq;
 import com.graduation.cn.college.dianping.service.SellerService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,11 +28,12 @@ public class SellerController {
 
     @RequestMapping("/index")
     @AdminPermission
-    public ModelAndView index() {
+    public ModelAndView index(PageQuery pageQuery) {
+        PageHelper.startPage(pageQuery.getPage(),pageQuery.getSize());
         List<SellerModel> sellerModelList = sellerService.selectAll();
-
+        PageInfo<SellerModel> sellerModelPageInfo = new PageInfo<>(sellerModelList);
         ModelAndView modelAndView = new ModelAndView("admin/seller/index.html");
-        modelAndView.addObject("data", sellerModelList);
+        modelAndView.addObject("data", sellerModelPageInfo);
         modelAndView.addObject("CONTROLLER_NAME", "seller");
         modelAndView.addObject("ACTION_NAME", "index");
         return modelAndView;
