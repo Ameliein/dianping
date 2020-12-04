@@ -1,4 +1,4 @@
-package com.graduation.cn.college.dianping.controller;
+package com.graduation.cn.college.dianping.controller.admin;
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
