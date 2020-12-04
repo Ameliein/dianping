@@ -1,6 +1,7 @@
 package com.graduation.cn.college.dianping.dal;
 
 import com.graduation.cn.college.dianping.model.SellerModel;
+import org.thymeleaf.IEngineConfiguration;
 
 import java.util.List;
 
@@ -54,4 +55,6 @@ public interface SellerModelMapper {
     int updateByPrimaryKey(SellerModel record);
 
     List<SellerModel> selectAll();
+
+    Integer countAllSeller();
 }
