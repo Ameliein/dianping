@@ -5,6 +5,16 @@ import java.util.Date;
 
 public class ShopModel {
 
+    private Integer distance;
+
+    public Integer getDistance() {
+        return distance;
+    }
+
+    public void setDistance(Integer distance) {
+        this.distance = distance;
+    }
+
     private CategoryModel categoryModel;
     private SellerModel sellerModel;
 
