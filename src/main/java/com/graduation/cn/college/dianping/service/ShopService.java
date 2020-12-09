@@ -5,6 +5,7 @@ import com.graduation.cn.college.dianping.model.ShopModel;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 public interface ShopService {
 
@@ -15,4 +16,8 @@ public interface ShopService {
     Integer countAllShop();
 
     List<ShopModel> recommend(BigDecimal longitude, BigDecimal latitude);
+
+    List<ShopModel> search(BigDecimal longitude, BigDecimal latitude, String keyword, Integer orderby, Integer categoryId, String tags);
+
+    List<Map<String,Integer>> searchGroupByTags(String keyword, Integer categoryId, String tags);
 }

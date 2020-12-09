@@ -92,9 +92,9 @@ public class UserController {
         return CommonRes.create(null);
     }
 
-    @RequestMapping("/getCurrentUser")
+    @RequestMapping("/getcurrentuser")
     @ResponseBody
-    public CommonRes getCurrentUser() {
+    public CommonRes getcurrentuser() {
         UserModel userModel = (UserModel) httpServletRequest.getSession().getAttribute(CURRENT_USER_SESSION);
         return CommonRes.create(userModel);
     }
