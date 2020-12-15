@@ -1,5 +1,7 @@
 package com.graduation.cn.college.dianping.service.impl;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.graduation.cn.college.dianping.common.BusinessException;
 import com.graduation.cn.college.dianping.common.EmBusinessError;
 import com.graduation.cn.college.dianping.dal.ShopModelMapper;
@@ -9,14 +11,27 @@ import com.graduation.cn.college.dianping.model.ShopModel;
 import com.graduation.cn.college.dianping.service.CategoryService;
 import com.graduation.cn.college.dianping.service.SellerService;
 import com.graduation.cn.college.dianping.service.ShopService;
+import org.apache.http.util.EntityUtils;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.Request;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.Response;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 public class ShopServiceImpl implements ShopService {
@@ -27,6 +42,9 @@ public class ShopServiceImpl implements ShopService {
     private CategoryService categoryService;
     @Autowired
     private SellerService sellerService;
+
+    @Autowired
+    private RestHighLevelClient highLevelClient;
 
     @Override
     @Transactional
@@ -100,5 +118,172 @@ public class ShopServiceImpl implements ShopService {
     @Override
     public List<Map<String, Integer>> searchGroupByTags(String keyword, Integer categoryId, String tags) {
         return shopModelMapper.searchGroupByTags(keyword,categoryId,tags);
+    }
+
+    @Override
+    public Map<String, Object> searchES(BigDecimal longitude, BigDecimal latitude, String keyword, Integer orderby, Integer categoryId, String tags) throws IOException {
+        Map<String, Object> result = new HashMap<>();
+
+//        SearchRequest searchRequest = new SearchRequest("shop");
+//        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+//        sourceBuilder.query(QueryBuilders.matchQuery("name",keyword));
+//        sourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
+//        searchRequest.source(sourceBuilder);
+//
+//        List<Integer> shopIdsList = new ArrayList<>();
+//        SearchResponse searchResponse = highLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+//        SearchHit[] hits = searchResponse.getHits().getHits();
+//        for (SearchHit hit : hits) {
+//            shopIdsList.add(new Integer(hit.getSourceAsMap().get("id").toString()));
+//        }
+
+        Request request = new Request("GET","/shop/_search");
+
+        JSONObject jsonRequestObj = new JSONObject();
+        // source
+        jsonRequestObj.put("_source","*");
+        // script_fields
+        jsonRequestObj.put("script_fields",new JSONObject());
+        jsonRequestObj.getJSONObject("script_fields").put("distance",new JSONObject());
+        jsonRequestObj.getJSONObject("script_fields").getJSONObject("distance").put("script",new JSONObject());
+        jsonRequestObj.getJSONObject("script_fields").getJSONObject("distance").getJSONObject("script").put("source","haversin(lat,lon,doc['location'].lat, doc['location'].lon)");
+        jsonRequestObj.getJSONObject("script_fields").getJSONObject("distance").getJSONObject("script").put("lang","expression");
+        jsonRequestObj.getJSONObject("script_fields").getJSONObject("distance").getJSONObject("script").put("params",new JSONObject());
+        jsonRequestObj.getJSONObject("script_fields").getJSONObject("distance").getJSONObject("script").getJSONObject("params").put("lat",latitude);
+        jsonRequestObj.getJSONObject("script_fields").getJSONObject("distance").getJSONObject("script").getJSONObject("params").put("lon",longitude);
+        // query
+        jsonRequestObj.put("query",new JSONObject());
+        // function score
+        jsonRequestObj.getJSONObject("query").put("function_score",new JSONObject());
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").put("query",new JSONObject());
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").put("bool",new JSONObject());
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").put("must",new JSONArray());
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").add(new JSONObject());
+
+        // match query
+        int queryIndex = 0;
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").getJSONObject(queryIndex).put("match",new JSONObject());
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").getJSONObject(queryIndex).getJSONObject("match").put("name", new JSONObject());
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").getJSONObject(queryIndex).getJSONObject("match").getJSONObject("name").put("query",keyword);
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").getJSONObject(queryIndex).getJSONObject("match").getJSONObject("name").put("boost",0.1);
+
+        // seconde query
+        queryIndex ++;
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").add(new JSONObject());
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").getJSONObject(queryIndex).put("term",new JSONObject());
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").getJSONObject(queryIndex).getJSONObject("term").put("seller_disabled_flag",0);
+
+        // tags query
+        if (tags != null) {
+            queryIndex ++;
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").add(new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").getJSONObject(queryIndex).put("term",new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").getJSONObject(queryIndex).getJSONObject("term").put("tags",tags);
+
+        }
+
+        // category query
+        if (categoryId != null) {
+            queryIndex ++;
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").add(new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").getJSONObject(queryIndex).put("term",new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONObject("query").getJSONObject("bool").getJSONArray("must").getJSONObject(queryIndex).getJSONObject("term").put("category_id",categoryId);
+        }
+
+        // function part
+        jsonRequestObj.getJSONObject("query").getJSONObject("function_score").put("functions",new JSONArray());
+        int functionIndex = 0;
+        if (orderby == null) {
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").add(new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).put("gauss",new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).getJSONObject("gauss").put("location",new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).getJSONObject("gauss").getJSONObject("location").put("origin",latitude.toString() + "," + longitude.toString());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).getJSONObject("gauss").getJSONObject("location").put("scale","100km");
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).getJSONObject("gauss").getJSONObject("location").put("offset","0km");
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).getJSONObject("gauss").getJSONObject("location").put("decay","0.5");
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).put("weight",9);
+
+            functionIndex ++;
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").add(new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).put("field_value_factor",new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).getJSONObject("field_value_factor").put("field","remark_score");
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).put("weight",0.2);
+
+            functionIndex ++;
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").add(new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).put("field_value_factor",new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).getJSONObject("field_value_factor").put("field","seller_remark_score");
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).put("weight",0.1);
+
+
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").put("score_mode","sum");
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").put("boost_mode","sum");
+        } else {
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").add(new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).put("field_value_factor",new JSONObject());
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).getJSONObject("field_value_factor").put("field","price_per_man");
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").getJSONArray("functions").getJSONObject(functionIndex).put("weight",1);
+
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").put("score_mode","sum");
+            jsonRequestObj.getJSONObject("query").getJSONObject("function_score").put("boost_mode","replace");
+        }
+
+
+
+        jsonRequestObj.put("sort",new JSONArray());
+        jsonRequestObj.getJSONArray("sort").add(new JSONObject());
+        jsonRequestObj.getJSONArray("sort").getJSONObject(0).put("_score",new JSONObject());
+        if (orderby == null) {
+            jsonRequestObj.getJSONArray("sort").getJSONObject(0).getJSONObject("_score").put("order","desc");
+        } else {
+            jsonRequestObj.getJSONArray("sort").getJSONObject(0).getJSONObject("_score").put("order","asc");
+        }
+
+        // group
+        jsonRequestObj.put("aggs",new JSONObject());
+        jsonRequestObj.getJSONObject("aggs").put("group_by_tags", new JSONObject());
+        jsonRequestObj.getJSONObject("aggs").getJSONObject("group_by_tags").put("terms", new JSONObject());
+        jsonRequestObj.getJSONObject("aggs").getJSONObject("group_by_tags").getJSONObject("terms").put("field","tags");
+
+
+
+
+
+        String reqJson = jsonRequestObj.toJSONString();
+
+
+        System.out.println(reqJson);
+        request.setJsonEntity(reqJson);
+        Response response = highLevelClient.getLowLevelClient().performRequest(request);
+        String responseStr = EntityUtils.toString(response.getEntity());
+        System.out.println("data : " + responseStr);
+
+        JSONObject jsonObject = JSONObject.parseObject(responseStr);
+        JSONArray jsonArray = jsonObject.getJSONObject("hits").getJSONArray("hits");
+        List<ShopModel> shopModelList = new ArrayList<>();
+        for (int i = 0; i < jsonArray.size();i++) {
+            JSONObject jsonObj = jsonArray.getJSONObject(i);
+            Integer id = new Integer(jsonObj.get("_id").toString());
+            BigDecimal distance = new BigDecimal(jsonObj.getJSONObject("fields").getJSONArray("distance").get(0).toString());
+            ShopModel shopModel = get(id);
+            shopModel.setDistance(distance.multiply(new BigDecimal(1000).setScale(0,BigDecimal.ROUND_CEILING)).intValue());
+            shopModelList.add(shopModel);
+        }
+
+        // tags filter
+        List<Map> tagsList = new ArrayList<>();
+        JSONArray tagsJsonArray = jsonObject.getJSONObject("aggregations").getJSONObject("group_by_tags").getJSONArray("buckets");
+        for (int i = 0; i < tagsJsonArray.size(); i++) {
+            JSONObject jsonObj = tagsJsonArray.getJSONObject(i);
+            Map<String, Object> tagMap = new HashMap<>();
+            tagMap.put("tags", jsonObj.getString("key"));
+            tagMap.put("num", jsonObj.getInteger("doc_count"));
+            tagsList.add(tagMap);
+        }
+
+
+        result.put("tags",tagsList);
+        result.put("shop", shopModelList);
+        return result;
     }
 }

@@ -3,6 +3,7 @@ package com.graduation.cn.college.dianping.service;
 import com.graduation.cn.college.dianping.common.BusinessException;
 import com.graduation.cn.college.dianping.model.ShopModel;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -20,4 +21,6 @@ public interface ShopService {
     List<ShopModel> search(BigDecimal longitude, BigDecimal latitude, String keyword, Integer orderby, Integer categoryId, String tags);
 
     List<Map<String,Integer>> searchGroupByTags(String keyword, Integer categoryId, String tags);
+
+    Map<String, Object> searchES(BigDecimal longitude, BigDecimal latitude, String keyword, Integer orderby, Integer categoryId, String tags) throws IOException;
 }
